@@ -1,14 +1,19 @@
 import express from 'express';
 
-const app = express();
-const PORT = 3000;
+import {
+obtenerSuperheroePorIdController, buscarSuperheroesPorAtributoController, obtenerSuperheroesMayoresDe30Controller
+} from './controllers/superheroesController.mjs';
 
-app.get('/user/:id', (req,res) =>
-{
-    const userId = req.params.id;
-    console.log(`ID del usuario recibido: ${userId}`);
-    res.send(`Perfil del usuario con ID:${userId}`);
-});
+const app = express();
+const PORT = 3005;
+
+
+app.get('/superheroes/id/:id',obtenerSuperheroePorIdController);
+
+app.get('/superheroes/atributo/:atributo/:valor',buscarSuperheroesPorAtributoController);
+
+app.get('/superheroes/edad/mayorA30',obtenerSuperheroesMayoresDe30Controller);
+
 
 app.listen(PORT,()=>
 {
