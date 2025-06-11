@@ -1,6 +1,6 @@
 import{obtenerSuperheroePorId,obtenerTodosLosSuperheroes,buscarSuperheroesPorAtributo,obtenerSuperheroesMayoresDe30} from '../services/superheroesService.mjs';
 
-import { renderizarSuperheroe,renderizarListaSuperheroes } from '../views/responseView.mjs';
+import { renderizarSuperheroe,renderizarListaSuperheroes } from '../views/reponseView.mjs';
 
 export async function obtenerSuperheroePorIdController(req,res)
 {
