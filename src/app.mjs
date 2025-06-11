@@ -1,6 +1,6 @@
 import express from 'express';
 import {connectDB} from './config/dbconfig.mjs';
-import superHeroRoutes from './routes/superHeroRoutes.mjs';
+import superHeroRoutes from './routes/SuperHeroRoutes.mjs';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
