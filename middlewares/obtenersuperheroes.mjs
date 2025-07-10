@@ -8,7 +8,7 @@ const sanitizarYDividir = (value) => {
     return value;
 };
 
-export const obtenersuperheroes = () => [
+export const validacionHeroe = () => [
     body('nombreSuperHeroe')
         .trim()
         .escape()
@@ -44,3 +44,4 @@ export const obtenersuperheroes = () => [
         .isLength({ min: 3, max: 60 })
         .withMessage('Cada poder debe ser una cadena de texto con entre 3 y 60 caracteres'),
 ];
+
