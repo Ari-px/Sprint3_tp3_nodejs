@@ -1,4 +1,4 @@
-class IRepository {
+export default class IRepository {
     obtenerTodos() {
         throw new Error("Método 'obtenerTodos()' no implementado");
     }
@@ -19,5 +19,4 @@ class IRepository {
         throw new Error("Método 'eliminar()' no implementado");
     }
 }
-
-export { IRepository };
+import IRepository from './IRepository.mjs';
