@@ -2,44 +2,48 @@ import express from 'express';
 import { validacionHeroe } from '../middlewares/obtenersuperheroes.mjs';
 import { handleValidationErrors } from '../middlewares/middleware.mjs';
 import {
-    getHeroByIdController,
-    getAllHeroesController,
-    searchHeroesByAttributeController,
-    getHeroesOver30Controller,
-    showAddHeroFormController,
-    showEditHeroFormController,
-    showDeleteConfirmationController,
-    createHeroController,
-    updateHeroController,
-    deleteHeroController
+    obtenerSuperheroePorIdController,
+    obtenerTodosLosSuperheroesController,
+    buscarSuperheroesPorAtributoController,
+    obtenerSuperheroesMayoresDe30Controller,
+
+    formAgregarHeroController,
+    formActualizarHeroeController,
+    confirmarEliminacionController,
+
+    agregarHeroController,
+    actualizarHeroController,
+    eliminarHeroController
+
 } from '../controllers/superheroesController.mjs';
 
 const router = express.Router();
 
-// API Endpoints
-router.get('/api/heroes', getAllHeroesController);
-router.get('/api/heroes/over-30', getHeroesOver30Controller);
-router.get('/api/heroes/:id', getHeroByIdController);
-router.get('/api/heroes/search/:attribute/:value', searchHeroesByAttributeController);
+// endpoints de lectura
+router.get('/heroes',obtenerTodosLosSuperheroesController);
+router.get('/heroes/mayores-30',obtenerSuperheroesMayoresDe30Controller);
+router.get('/heroes/:id',obtenerSuperheroePorIdController);
+router.get('/heroes/buscar/:atributo/:valor',buscarSuperheroesPorAtributoController);
 
-// UI Forms
-router.get('/heroes/add', showAddHeroFormController);
-router.get('/heroes/edit/:id', showEditHeroFormController);
-router.get('/heroes/delete/:id', showDeleteConfirmationController);
+// Formularios
+router.get('/formAgregarHero',formAgregarHeroController);
+router.get('/formEditarHero/:id',formActualizarHeroeController);
+router.get('/confirmarEliminar/:id', confirmarEliminacionController);
 
-// CRUD Operations
-router.post('/api/heroes',
+// Ruta: Create
+router.post('/AgregarHero',
     validacionHeroe(),
-    handleValidationErrors,
-    createHeroController
-);
+    handleValidationErrors ,
+    agregarHeroController);
 
-router.put('/api/heroes/:id',
+// Ruta: Update
+router.put('/ActualizarHero/:id',
     validacionHeroe(),
-    handleValidationErrors,
-    updateHeroController
-);
+    handleValidationErrors ,
+    actualizarHeroController);
 
-router.delete('/api/heroes/:id', deleteHeroController);
+// Ruta: Delete
+router.delete('/EliminarHero/:id', eliminarHeroController);
+
 
 export default router;
