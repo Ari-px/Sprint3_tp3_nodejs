@@ -1,121 +1,293 @@
 import {
-  crearSuperheroe,
-  actualizarSuperheroe,
-  eliminarSuperheroe,
-  obtenerTodosLosSuperheroes,
-  eliminarSuperheroePorNombre,
-  obtenerSuperheroePorId,
-} from "../services/superheroesService.mjs";
-import {
-  renderizarListaSuperheroes,
-  renderizarSuperheroe,
-} from "../views/responseView.mjs";
+    crearSuperheroe,
+    obtenerSuperheroePorId,
+    obtenerTodosLosSuperheroes,
+    buscarSuperheroesPorAtributo,
+    obtenerSuperheroesMayoresDe30,
+    actualizarSuperheroe,
+    eliminarSuperheroe
+} from '../services/superheroesService.mjs';
 
-// Función para manejar la respuesta en formato JSON o HTML
-const manejarRespuesta = (req, res, status, mensaje, data) => {
-  if (req.accepts("json")) {
-    return res.status(status).json({ mensaje, data });
-  }
-  return res.status(status).send(mensaje);
-};
+import { Types } from 'mongoose'; // Para validar IDs de MongoDB
 
-export const obtenerTodosLosSuperheroesController = async (req, res) => {
-  console.log("📥 GET /api/heroes - Obtener todos los superhéroes");
+// ----------------------------------------------------
+// CONTROLADORES DE LECTURA (GET)
+// ----------------------------------------------------
 
-  try {
-    const superheroes = await obtenerTodosLosSuperheroes();
-    console.log("✅ Superhéroes obtenidos:", superheroes.length);
+export async function obtenerSuperheroePorIdController(req, res) {
+    try {
+        const { id } = req.params;
 
-    if (req.accepts("html")) {
-      return res.render("dashboard", { superheroes });
+        // Validar que el ID sea un ObjectId válido de Mongoose
+        if (!Types.ObjectId.isValid(id)) {
+            if (req.accepts('json')) {
+                return res.status(400).json({ message: 'ID de superhéroe no válido.' });
+            }
+            return res.status(400).send('ID de superhéroe no válido.');
+        }
+
+        const superheroe = await obtenerSuperheroePorId(id);
+
+        if (!superheroe) {
+            if (req.accepts('json')) {
+                return res.status(404).json({ message: 'Superhéroe no encontrado.' });
+            }
+            return res.status(404).send('Superhéroe no encontrado.');
+        }
+
+        if (req.accepts('html')) {
+            // Si el cliente prefiere HTML, redirige al dashboard principal
+            res.redirect('/api/heroes');
+        } else if (req.accepts('json')) {
+            // Si el cliente prefiere JSON, envía los datos del superhéroe.
+            res.json(superheroe);
+        } else {
+            res.status(406).send('Not Acceptable: Solo se soportan respuestas HTML o JSON.');
+        }
+    } catch (error) {
+        console.error('Error en obtenerSuperheroePorIdController:', error);
+        res.status(500).send({ mensaje: 'Error al obtener el superhéroe', error: error.message });
     }
+}
 
-    return manejarRespuesta(req, res, 200, "Superhéroes obtenidos correctamente.", renderizarListaSuperheroes(superheroes));
-  } catch (error) {
-    console.error("❌ Error al obtener superhéroes:", error.message);
-    return manejarRespuesta(req, res, 500, "Error al obtener los superhéroes", error.message);
-  }
-};
+export async function obtenerTodosLosSuperheroesController(req, res) {
+    try {
+        const superheroes = await obtenerTodosLosSuperheroes();
 
-export const formularioAgregarSuperheroeController = (req, res) => {
-  console.log("GET /api/heroes/agregar - Renderizar formulario de agregar");
-  res.render("addSuperhero", { errors: [], old: {} });
-};
-
-export const crearSuperheroeController = async (req, res) => {
-  const old = { ...req.body };
-
-  console.log("📥 POST /api/heroes/agregar - Datos recibidos:", old);
-
-  try {
-    const nuevo = await crearSuperheroe(req.body);
-    console.log("✅ Superhéroe creado correctamente:", nuevo);
-    return req.accepts("html") ? res.redirect("/api/heroes") : manejarRespuesta(req, res, 201, "Superhéroe creado exitosamente.", nuevo);
-  } catch (error) {
-    console.error("❌ Error al crear superhéroe:", error);
-    return manejarRespuesta(req, res, 500, "Error al crear superhéroe.", error.message);
-  }
-};
-
-export const formularioEditarSuperheroeController = async (req, res) => {
-  console.log(`GET /api/heroes/${req.params.id}/editar - Editar superhéroe`);
-  try {
-    const superhero = await obtenerSuperheroePorId(req.params.id);
-    if (!superhero) {
-      return manejarRespuesta(req, res, 404, "Superhéroe no encontrado");
+        if (req.accepts('html')) {
+            // Si el cliente prefiere HTML (navegador), renderiza el dashboard
+            res.render('dashboard', { superheroes });
+        } else if (req.accepts('json')) {
+            // Si el cliente prefiere JSON (Postman), envía los datos
+            res.json(superheroes);
+        } else {
+            // Si no se soporta el tipo de contenido, responde con 406 Not Acceptable
+            res.status(406).send('Not Acceptable: Solo se soportan respuestas HTML o JSON.');
+        }
+    } catch (error) {
+        console.error('Error en obtenerTodosLosSuperheroesController:', error);
+        res.status(500).send({ mensaje: 'Error al obtener los superhéroes', error: error.message });
     }
-    res.render("editSuperhero", { errors: [], old: {}, superhero });
-  } catch (error) {
-    console.error("Error al buscar superhéroe:", error);
-    return manejarRespuesta(req, res, 500, "Error al buscar superhéroe", error.message);
-  }
-};
+}
 
-export const actualizarSuperheroeController = async (req, res) => {
-  const superheroeId = req.params.id;
-  console.log(`📝 PUT /api/heroes/${superheroeId}/editar - Datos recibidos`, req.body);
+export async function buscarSuperheroesPorAtributoController(req, res) {
+    try {
+        const { atributo, valor } = req.params;
+        const superheroes = await buscarSuperheroesPorAtributo(atributo, valor);
 
-  try {
-    const update = await actualizarSuperheroe(superheroeId, req.body);
-    if (!update) {
-      return manejarRespuesta(req, res, 404, "Superhéroe no encontrado para actualizar.");
+        if (superheroes.length === 0) {
+            if (req.accepts('json')) {
+                return res.status(404).json({ mensaje: 'No se encontraron superhéroes con ese atributo.' });
+            }
+            return res.status(404).send('No se encontraron superhéroes con ese atributo.');
+        }
+
+        if (req.accepts('html')) {
+            // Para HTML, renderiza el dashboard con los resultados filtrados
+            res.render('dashboard', { superheroes });
+        } else if (req.accepts('json')) {
+            // Si el cliente prefiere JSON, envía los datos.
+            res.json(superheroes);
+        } else {
+            res.status(406).send('Not Acceptable: Solo se soportan respuestas HTML o JSON.');
+        }
+    } catch (error) {
+        console.error('Error en buscarSuperheroesPorAtributoController:', error);
+        res.status(500).send({ mensaje: 'Error al buscar los superhéroes', error: error.message });
     }
-    console.log("✅ Superhéroe actualizado:", update);
-    return req.accepts("html") ? res.redirect("/api/heroes") : manejarRespuesta(req, res, 200, "Superhéroe actualizado con éxito.", update);
-  } catch (error) {
-    console.error("❌ Error al actualizar superhéroe:", error);
-    return manejarRespuesta(req, res, 400, "Error al actualizar el superhéroe.", error.message);
-  }
-};
+}
 
-export const eliminarSuperheroeController = async (req, res) => {
-  console.log(`DELETE /api/heroes/${req.params.id} - Eliminar superhéroe`);
-  try {
-    const eliminado = await eliminarSuperheroe(req.params.id);
-    if (!eliminado) {
-      return manejarRespuesta(req, res, 404, "Superhéroe no encontrado para eliminar");
+export async function obtenerSuperheroesMayoresDe30Controller(req, res) {
+    try {
+        const superheroes = await obtenerSuperheroesMayoresDe30();
+
+        if (superheroes.length === 0) {
+            if (req.accepts('json')) {
+                return res.status(404).json({ mensaje: 'No se encontraron superhéroes mayores de 30 años.' });
+            }
+            return res.status(404).send('No se encontraron superhéroes mayores de 30 años.');
+        }
+
+        if (req.accepts('html')) {
+            // Renderiza el dashboard con los resultados filtrados
+            res.render('dashboard', { superheroes });
+        } else if (req.accepts('json')) {
+            // Si el cliente prefiere JSON, envía los datos.
+            res.json(superheroes);
+        } else {
+            res.status(406).send('Not Acceptable: Solo se soportan respuestas HTML o JSON.');
+        }
+    } catch (error) {
+        console.error('Error en obtenerSuperheroesMayoresDe30Controller:', error);
+        res.status(500).send({ mensaje: 'Error al obtener superhéroes mayores de 30', error: error.message });
     }
-    console.log("Superhéroe eliminado correctamente:", eliminado);
-    return req.accepts("html") ? res.redirect("/api/heroes") : manejarRespuesta(req, res, 200, "Superhéroe eliminado con éxito", eliminado);
-  } catch (error) {
-    console.error("Error al eliminar superhéroe:", error);
-    return manejarRespuesta(req, res, 500, "Error al eliminar", error.message);
-  }
-};
+}
 
-export const eliminarSuperheroePorNombreController = async (req, res) => {
-  const nombre = req.params.nombre;
-  console.log(`🗑 DELETE /api/heroes/nombre/${nombre}`);
+// ----------------------------------------------------
+// CONTROLADORES DE FORMULARIOS (Siempre HTML)
+// ----------------------------------------------------
 
-  try {
-    const eliminado = await eliminarSuperheroePorNombre(nombre);
-    if (!eliminado) {
-      return manejarRespuesta(req, res, 404, "Superhéroe no encontrado por nombre");
+export async function formAgregarHeroController(req, res) {
+    // Este siempre es para el navegador, así que siempre renderiza HTML
+    // CORREGIDO: Ahora renderiza 'agregarHero' para que coincida con tu archivo EJS
+    res.render('agregarHero');
+}
+
+export async function formActualizarHeroeController(req, res) {
+    try {
+        const { id } = req.params;
+        // Validar que el ID sea un ObjectId válido de Mongoose
+        if (!Types.ObjectId.isValid(id)) {
+            return res.status(400).send('ID de superhéroe no válido para edición.');
+        }
+        const superheroe = await obtenerSuperheroePorId(id);
+
+        if (!superheroe) {
+            return res.status(404).send('Superhéroe no encontrado para editar.');
+        }
+
+        res.render('editarHero', { info: superheroe });
+    } catch (error) {
+        console.error('Error en formActualizarHeroeController:', error);
+        res.status(500).send('Error interno al cargar el formulario de edición.');
     }
-    console.log("✅ Superhéroe eliminado por nombre:", eliminado);
-    return req.accepts("json") ? manejarRespuesta(req, res, 200, "Superhéroe eliminado por nombre con éxito.", renderizarSuperheroe(eliminado)) : res.render("dashboard", { superheroes: await obtenerTodosLosSuperheroes(), mensaje: `Superhéroe "${eliminado.nombreSuperHeroe}" eliminado con éxito.` });
-  } catch (error) {
-    console.error("❌ Error al eliminar por nombre:", error);
-    return manejarRespuesta(req, res, 500, "Error al eliminar por nombre", error.message);
-  }
-};
+}
+
+export async function confirmarEliminacionController(req, res) {
+    try {
+        const { id } = req.params;
+        // Validar que el ID sea un ObjectId válido de Mongoose
+        if (!Types.ObjectId.isValid(id)) {
+            return res.status(400).send('ID de superhéroe no válido para confirmación.');
+        }
+
+        const superheroe = await obtenerSuperheroePorId(id);
+
+        if (!superheroe) {
+            return res.status(404).send('Superhéroe no encontrado para confirmar eliminación.');
+        }
+
+        // CORREGIDO: Ahora renderiza 'confirmarEliminacion' para que coincida con tu archivo EJS
+        res.render('confirmarEliminacion', { info: superheroe });
+    } catch (error) {
+        console.error('Error en confirmarEliminacionController:', error);
+        res.status(500).send({ mensaje: 'Error interno al cargar la página de confirmación.' });
+    }
+}
+
+// ----------------------------------------------------
+// CONTROLADORES DE ESCRITURA (POST, PUT, DELETE)
+// ----------------------------------------------------
+
+export async function agregarHeroController(req, res) {
+    try {
+        const body = {
+            ...req.body,
+            poderes: req.body.poderes || [],
+            aliados: req.body.aliados || [],
+            enemigos: req.body.enemigos || [],
+        };
+
+        const nuevoSuperheroe = await crearSuperheroe(body);
+
+        if (req.accepts('html')) {
+            res.redirect('/api/heroes'); // Redirige al dashboard HTML
+        } else if (req.accepts('json')) {
+            res.status(201).json(nuevoSuperheroe); // Responde con el héroe creado y status 201 (Created)
+        } else {
+            res.status(406).send('Not Acceptable: Solo se soportan respuestas HTML o JSON.');
+        }
+    } catch (error) {
+        console.error('Error en agregarHeroController:', error);
+        if (error.name === 'ValidationError') {
+            const errors = Object.keys(error.errors).map(key => error.errors[key].message);
+            if (req.accepts('json')) {
+                return res.status(400).json({ message: 'Errores de validación', errors });
+            } else {
+                return res.status(400).send('Error de validación: ' + errors.join(', '));
+            }
+        }
+        res.status(500).send({ mensaje: 'Error al crear un superhéroe nuevo', error: error.message });
+    }
+}
+
+export async function actualizarHeroController(req, res) {
+    try {
+        const { id } = req.params;
+
+        if (!Types.ObjectId.isValid(id)) {
+            if (req.accepts('json')) {
+                return res.status(400).json({ message: 'ID de superhéroe no válido.' });
+            }
+            return res.status(400).send('ID de superhéroe no válido.');
+        }
+
+        const datosActualizados = {
+            ...req.body,
+            poderes: req.body.poderes || [],
+            aliados: req.body.aliados || [],
+            enemigos: req.body.enemigos || [],
+        };
+
+        const superheroeActualizado = await actualizarSuperheroe(id, datosActualizados);
+
+        if (!superheroeActualizado) {
+            if (req.accepts('json')) {
+                return res.status(404).json({ message: 'Superhéroe no encontrado para actualizar.' });
+            }
+            return res.status(404).send('Superhéroe no encontrado para actualizar.');
+        }
+
+        if (req.accepts('html')) {
+            res.redirect('/api/heroes'); // Redirige al dashboard HTML
+        } else if (req.accepts('json')) {
+            res.json(superheroeActualizado); // Responde con el héroe actualizado
+        } else {
+            res.status(406).send('Not Acceptable: Solo se soportan respuestas HTML o JSON.');
+        }
+    } catch (error) {
+        console.error('Error en actualizarHeroController:', error);
+        if (error.name === 'ValidationError') {
+            const errors = Object.keys(error.errors).map(key => error.errors[key].message);
+            if (req.accepts('json')) {
+                return res.status(400).json({ message: 'Errores de validación', errors });
+            } else {
+                return res.status(400).send('Error de validación: ' + errors.join(', '));
+            }
+        }
+        res.status(500).send({ mensaje: 'Error al modificar el superhéroe', error: error.message });
+    }
+}
+
+export async function eliminarHeroController(req, res) {
+    try {
+        const { id } = req.params;
+
+        if (!Types.ObjectId.isValid(id)) {
+            if (req.accepts('json')) {
+                return res.status(400).json({ message: 'ID de superhéroe no válido.' });
+            }
+            return res.status(400).send('ID de superhéroe no válido.');
+        }
+
+        const superheroeEliminado = await eliminarSuperheroe(id); // Asegúrate de usar el nombre correcto de la función
+
+        if (!superheroeEliminado) {
+            if (req.accepts('json')) {
+                return res.status(404).json({ message: 'Superhéroe no encontrado para eliminar.' });
+            }
+            return res.status(404).send('Superhéroe no encontrado para eliminar.');
+        }
+
+        if (req.accepts('html')) {
+            res.redirect('/api/heroes'); // Redirige al dashboard HTML
+        } else if (req.accepts('json')) {
+            res.status(200).json({ message: 'Superhéroe eliminado correctamente', deletedHero: superheroeEliminado }); // Responde con un mensaje y el héroe eliminado
+        } else {
+            res.status(406).send('Not Acceptable: Solo se soportan respuestas HTML o JSON.');
+        }
+    } catch (error) {
+        console.error('Error en eliminarHeroController:', error);
+        res.status(500).send({ mensaje: 'Error al eliminar el superhéroe.', error: error.message });
+    }
+}
