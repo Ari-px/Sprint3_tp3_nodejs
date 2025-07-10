@@ -19,4 +19,3 @@ export default class IRepository {
         throw new Error("Método 'eliminar()' no implementado");
     }
 }
-import IRepository from './IRepository.mjs';
